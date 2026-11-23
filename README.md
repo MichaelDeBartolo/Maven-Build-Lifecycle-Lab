@@ -1,4 +1,4 @@
-# Maven Build Lifecycle Lab su Ubuntu — Guida Passo Passo
+# Maven Build Lifecycle Lab su Ubuntu 
 
 Guida pratica sul **build lifecycle di Apache Maven** su Linux (Ubuntu `24.04`) con **OpenJDK 17**.  
 L'obiettivo di questo laboratorio è mostrare come installare Java e Maven, generare un progetto di esempio, eseguire le fasi del ciclo di build, interpretare i log in caso di errore e distinguere rapidamente le cause in un contesto di **integration support** o **incident triage**.
