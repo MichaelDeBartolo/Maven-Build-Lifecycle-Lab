@@ -1,58 +1,56 @@
-# Maven Build Lifecycle Lab — Ubuntu
+# Maven Build Lifecycle Lab su Ubuntu — Guida Passo Passo
 
-Laboratorio pratico sul build lifecycle di Maven, eseguito su Ubuntu Linux.  
-Obiettivo: comprendere le fasi di build, leggere i log, diagnosticare errori tipici in un contesto di integration support.
+Guida pratica sul **build lifecycle di Apache Maven** su Linux (Ubuntu `24.04`) con **OpenJDK 17**.  
+L'obiettivo di questo laboratorio è mostrare come installare Java e Maven, generare un progetto di esempio, eseguire le fasi del ciclo di build, interpretare i log in caso di errore e distinguere rapidamente le cause in un contesto di **integration support** o **incident triage**.
 
----
-
-## Ambiente
-
-| Componente | Versione |
-|---|---|
-| OS | Ubuntu 24.04 |
-| Java | OpenJDK 17 (LTS) |
-| Maven | 3.x |
-| Progetto | `com.testlab:integration-demo` |
+> **Nota sul perimetro:** In questo laboratorio il focus non è sullo sviluppo applicativo Java, ma sulla comprensione del ciclo di vita della build, sulla lettura dei log e sulla diagnosi degli errori più comuni (errori di sintassi, dipendenze non risolte, fallimento test o problemi di autenticazione/risorse).
 
 ---
 
-## Fase 1 — Installazione
+## Cosa fa in breve Maven (e perché si parte da qui)
 
-Installazione di Java e Maven tramite apt, con verifica delle versioni.
+Immagina di dover trasformare un progetto sorgente in un artefatto eseguibile o distribuibile (come un `.jar`) e verificare che tutto sia coerente prima del rilascio:
+* **Maven** automatizza compilazione, esecuzione dei test, impacchettamento e gestione delle dipendenze seguendo un ordine preciso di fasi (**lifecycle**).
+* Quando si lancia una fase avanzata del lifecycle (ad esempio `package`), Maven esegue automaticamente anche le fasi precedenti che la precedono nell'ordine standard.
+* Capire **in quale fase** si ferma una build e **quale messaggio** riporta il log permette di indirizzare subito il problema al team o alla risorsa giusta.
+
+---
+
+## Architettura e Ambiente di Test
+
+| Componente | Ruolo | Dettagli nel laboratorio |
+| :--- | :--- | :--- |
+| **Sistema Operativo** | Host Linux | Ubuntu `24.04` con accesso terminale e permessi `sudo` |
+| **Java** | Runtime e compilatore | OpenJDK `17` (LTS) |
+| **Build Tool** | Gestione build e dipendenze | Apache Maven `3.x` |
+| **Progetto di test** | Archetype `quickstart` | `com.testlab:integration-demo` (`1.0-SNAPSHOT`) |
+
+---
+
+## Passo 1 — Installazione di Java e Maven
+
+Aggiorna i pacchetti del sistema, installa **OpenJDK 17** e **Apache Maven**, quindi verifica le versioni installate:
 
 ```bash
-# Aggiorna i pacchetti
 sudo apt update && sudo apt install -y openjdk-17-jdk
-
-# Verifica Java
 java -version
 
-# Installa Maven
 sudo apt install -y maven
-
-# Verifica Maven
 mvn -version
 ```
 
-**Risultato atteso:**
-```
-openjdk version "17.0.x"
-Apache Maven 3.x.x
-Java version: 17.0.x
-```
+### Verifica del passaggio
+I comandi `java -version` e `mvn -version` devono restituire le versioni attese (`OpenJDK 17` e `Apache Maven 3.x`) senza errori.
 
 ---
 
-## Fase 2 — Creazione del progetto
+## Passo 2 — Creazione del Progetto con Archetype
 
-Maven genera automaticamente la struttura del progetto tramite un archetype.  
-Non è necessario scrivere codice Java manualmente.
+Crea una cartella di lavoro e genera la struttura base del progetto usando il template `maven-archetype-quickstart`:
 
 ```bash
-# Crea la directory di lavoro
-mkdir ~/maven-lab && cd ~/maven-lab
+mkdir -p ~/maven-lab && cd ~/maven-lab
 
-# Genera il progetto con archetype quickstart
 mvn archetype:generate \
   -DgroupId=com.testlab \
   -DartifactId=integration-demo \
@@ -60,132 +58,106 @@ mvn archetype:generate \
   -DarchetypeVersion=1.4 \
   -DinteractiveMode=false
 
-# Entra nel progetto
 cd integration-demo
-
-# Esplora la struttura generata
 find . -type f
 ```
 
-**Struttura prodotta:**
-```
+### Struttura generata e file `pom.xml`
+```text
 ./pom.xml
 ./src/main/java/com/testlab/App.java
 ./src/test/java/com/testlab/AppTest.java
 ```
 
-**Componenti chiave del `pom.xml`:**
+Nel file `pom.xml` sono definiti i parametri identificativi del progetto:
 
-| Campo | Valore | Significato |
-|---|---|---|
-| `groupId` | `com.testlab` | Identificatore dell'organizzazione |
-| `artifactId` | `integration-demo` | Nome del progetto |
-| `version` | `1.0-SNAPSHOT` | Versione del jar prodotto |
+| Campo | Valore nel lab | Significato |
+| :--- | :--- | :--- |
+| `groupId` | `com.testlab` | Identificatore dell'organizzazione o del gruppo |
+| `artifactId` | `integration-demo` | Nome dell'artefatto / progetto |
+| `version` | `1.0-SNAPSHOT` | Versione del pacchetto generato |
 
 ---
+## Passo 3 — Eseguire le Fasi del Build Lifecycle
 
-## Fase 3 — Build lifecycle
+All'interno della cartella `integration-demo`, puoi eseguire le singole fasi del ciclo di vita di Maven per osservare quali artefatti vengono prodotti:
 
-Maven segue un ordine fisso di fasi. Eseguire una fase successiva include automaticamente tutte le precedenti.
-
-### compile
-Trasforma i file `.java` in bytecode `.class`.
+### 3.1 `compile` — Compilazione dei sorgenti
+Compila i file `.java` in bytecode `.class`:
 
 ```bash
 mvn compile
-
-# Verifica output prodotto
 ls target/classes/com/testlab/
-# → App.class
 ```
 
-### test
-Esegue i test automatici JUnit.
+### 3.2 `test` — Esecuzione dei test automatici
+Esegue la suite di test (es. JUnit):
 
 ```bash
 mvn test
-# → Tests run: 1, Failures: 0, Errors: 0
 ```
 
-### package
-Crea il file `.jar` distribuibile nella cartella `target/`.
+### 3.3 `package` — Creazione del pacchetto `.jar`
+Impacchetta il codice compilato e le risorse nel file `.jar` all'interno di `target/`:
 
 ```bash
 mvn package
-
-# Verifica il jar prodotto
 ls -lh target/*.jar
-# → integration-demo-1.0-SNAPSHOT.jar
 ```
 
-### install
-Copia il jar nel repository locale Maven (`~/.m2`), rendendolo disponibile ad altri progetti locali.
+### 3.4 `install` — Installazione nel repository locale (`~/.m2`)
+Copia il `.jar` nel repository locale di Maven (`~/.m2`), rendendolo riutilizzabile da altri progetti locali sulla macchina:
 
 ```bash
 mvn install
-
-# Verifica presenza nel repository locale
 find ~/.m2/repository/com/testlab -type f
 ```
 
-### clean
-Elimina la cartella `target/` per ripartire da zero.
+### 3.5 `clean` e comando combinato tipico
+Rimuove la cartella `target/` per ripulire gli artefatti generati, oppure combina pulizia e impacchettamento:
 
 ```bash
 mvn clean
 ```
 
-### Comando tipico in produzione
+In contesti operativi o di deploy rapido si incontra spesso una combinazione come:
 
 ```bash
-# Clean + package saltando i test — usato per deploy rapidi
 mvn clean package -DskipTests
 ```
+*(Nota: saltare i test con `-DskipTests` va usato con cautela e solo quando previsto dalla procedura operativa, perché riduce la verifica automatica prima del rilascio.)*
 
 ---
 
-## Fase 4 — Simulazione errori
+## Passo 4 — Simulazione e Diagnosi degli Errori di Build
 
-Provocare errori reali per allenarsi a leggere i log di build.
+Allenarsi a leggere il log quando una build fallisce aiuta a capire subito se il problema riguarda il codice sorgente, le dipendenze o l'ambiente.
 
-### Errore 1 — Errore di compilazione (sintassi Java)
+### 4.1 Errore di compilazione (sintassi Java)
+Simula un errore di sintassi in `App.java` e lancia `mvn compile`:
 
 ```bash
-# Rompe la sintassi in App.java
-sed -i 's/System.out.println/System.out.ERRORE/' \
-  src/main/java/com/testlab/App.java
-
-# Lancia il compile
+sed -i 's/System.out.println/System.out.ERRORE/' src/main/java/com/testlab/App.java
 mvn compile
 ```
 
-**Output:**
-```
+Output tipico:
+```text
 [ERROR] COMPILATION ERROR
 [ERROR] App.java:[10,20] cannot find symbol
 [ERROR] symbol: variable ERRORE
 [ERROR] BUILD FAILURE
 ```
 
-**Diagnosi:** `BUILD FAILURE` in fase `compile` = errore di sintassi nel codice sorgente. Da escalare al developer con il numero di riga indicato nel log.
+**Come leggerlo e ripristinarlo:** un errore `COMPILATION ERROR` con `cannot find symbol` in fase di compilazione indica un errore nel codice sorgente (con file e posizione indicati nel log). Ripristina il file:
 
 ```bash
-# Ripristino
-sed -i 's/System.out.ERRORE/System.out.println/' \
-  src/main/java/com/testlab/App.java
+sed -i 's/System.out.ERRORE/System.out.println/' src/main/java/com/testlab/App.java
 ```
 
----
+### 4.2 Dipendenza non risolvibile (`pom.xml`)
+Aggiungi temporaneamente una dipendenza inesistente dentro `<dependencies>` in `pom.xml` (con `nano pom.xml`):
 
-### Errore 2 — Dipendenza non risolvibile
-
-```bash
-# Aggiungi una dipendenza inesistente nel pom.xml
-# Apri pom.xml con un editor e inserisci dentro <dependencies>:
-nano pom.xml
-```
-
-Aggiungi manualmente:
 ```xml
 <dependency>
   <groupId>com.fake</groupId>
@@ -194,86 +166,71 @@ Aggiungi manualmente:
 </dependency>
 ```
 
+Esegui `mvn package`:
+
 ```bash
-# Lancia il package
 mvn package
 ```
 
-**Output:**
-```
+Output tipico:
+```text
 [ERROR] Could not resolve dependencies for project com.testlab:integration-demo
 [ERROR] Could not find artifact com.fake:fake-lib:jar:99.0
 [ERROR] BUILD FAILURE
 ```
 
-**Diagnosi:** `Could not resolve dependencies` = dipendenza mancante o versione errata nel `pom.xml`. Non è un errore di codice. Verificare il `pom.xml` e il repository Nexus/Artifactory aziendale.
-
-```bash
-# Ripristino: rimuovi le righe della dipendenza fake con nano
-nano pom.xml
-# Ctrl+O per salvare, Ctrl+X per uscire
-```
+**Come leggerlo e ripristinarlo:** `Could not resolve dependencies` indica che Maven non trova l'artefatto richiesto (coordinate errate, versione non disponibile o problemi di accesso al repository remoto/privato), non un errore di sintassi Java. Rimuovi poi le righe aggiunte in `pom.xml`.
 
 ---
+## Passo 5 — Lettura Avanzata dei Log e Dipendenze
 
-## Fase 5 — Lettura avanzata dei log
-
-Comandi per filtrare e analizzare log verbosi, utili in contesti di monitoring e incident response.
+Quando l'output di build è esteso, puoi salvare il log su file, filtrare gli avvisi/errori e ispezionare l'albero delle dipendenze:
 
 ```bash
-# Salva il log completo su file e mostralo a schermo
 mvn package 2>&1 | tee build.log
-
-# Filtra solo errori e warning
 grep -E "ERROR|FAILURE|WARNING" build.log
-
-# Mostra le fasi del lifecycle eseguite
 grep "\-\-\-" build.log
-
-# Build silenzioso — mostra solo errori
 mvn package -q 2>&1 | grep -E "ERROR|BUILD"
-
-# Albero completo delle dipendenze
 mvn dependency:tree
 ```
 
-**Output di `dependency:tree`:**
-```
+Esempio di albero dipendenze (`mvn dependency:tree`):
+```text
 com.testlab:integration-demo:jar:1.0-SNAPSHOT
 \- junit:junit:jar:4.11:test
    \- org.hamcrest:hamcrest-core:jar:1.3:test
 ```
-
-Utile per diagnosticare conflitti tra versioni di librerie (dipendenze transitive).
-
----
-
-## Riepilogo — fasi e artefatti prodotti
-
-| Fase | Comando | Artefatto prodotto | Dove |
-|---|---|---|---|
-| compile | `mvn compile` | `.class` | `target/classes/` |
-| test | `mvn test` | report test | `target/surefire-reports/` |
-| package | `mvn package` | `.jar` | `target/` |
-| install | `mvn install` | `.jar` | `~/.m2/repository/` |
-| clean | `mvn clean` | — | elimina `target/` |
+Utile per verificare dipendenze transitive e individuare eventuali conflitti di versione.
 
 ---
 
-## Riepilogo — errori tipici e diagnosi
+## Tabelle di Riepilogo
 
-| Messaggio nel log | Fase | Causa | Azione |
-|---|---|---|---|
-| `cannot find symbol` | compile | Sintassi Java errata | Escalare al developer con numero di riga |
-| `Could not resolve dependencies` | package | Dipendenza mancante o versione errata | Verificare `pom.xml` e repo Nexus |
-| `Tests run: X, Failures: Y` | test | Test falliti | Escalare al developer con il report |
-| `401 Unauthorized` | deploy | Credenziali errate su Nexus/Artifactory | Verificare configurazione `settings.xml` |
-| `OutOfMemoryError` | qualsiasi | Heap JVM esaurita | Verificare memoria disponibile, non riavviare senza diagnosi |
+### Fasi e artefatti principali
+
+| Fase | Comando | Artefatto / Risultato | Percorso tipico |
+| :--- | :--- | :--- | :--- |
+| **compile** | `mvn compile` | File `.class` compilati | `target/classes/` |
+| **test** | `mvn test` | Report dei test eseguiti | `target/surefire-reports/` |
+| **package** | `mvn package` | Archvio `.jar` | `target/` |
+| **install** | `mvn install` | Copia `.jar` nel repo locale | `~/.m2/repository/` |
+| **clean** | `mvn clean` | Pulizia artefatti di build | Rimuove `target/` |
+
+### Errori frequenti e prima diagnosi
+
+| Segnale nel log | Fase / Ambito | Causa probabile | Prima azione di verifica |
+| :--- | :--- | :--- | :--- |
+| `cannot find symbol` | `compile` | Errore di sintassi o simbolo non definito nel codice | Controllare file e riga indicati e segnalare allo sviluppo |
+| `Could not resolve dependencies` | `package` / risoluzione | Dipendenza o versione non trovata / repo non raggiungibile | Verificare coordinate in `pom.xml` e configurazione repository |
+| `Tests run: X, Failures: Y` | `test` | Uno o più test automatici sono falliti | Ispezionare i report in `target/surefire-reports/` e il dettaglio del test |
+| `401 Unauthorized` | `deploy` / repo | Credenziali non valide o scadute | Verificare credenziali/token e configurazione in `settings.xml` |
+| `OutOfMemoryError` | Qualsiasi | Memoria heap JVM insufficiente | Verificare risorse di sistema e impostazioni memoria della JVM |
 
 ---
 
-## Note finali
+## Competenze Dimostrate in Questo Laboratorio
 
-Laboratorio realizzato su Ubuntu 24.04 come esercizio pratico di comprensione del build lifecycle Maven in contesto di integration support.
-
-Il focus non è sulla scrittura di codice Java, ma sulla capacità di leggere output di build, identificare la fase in cui un processo fallisce, e distinguere tra errori di compilazione, dipendenze non risolte e problemi di deploy —
+* Installazione e verifica di **Java (OpenJDK 17)** e **Apache Maven** su Linux Ubuntu.
+* Generazione e ispezione di un progetto Maven (`pom.xml`, sorgenti, test e cartella `target/`).
+* Esecuzione delle fasi del lifecycle (`compile`, `test`, `package`, `install`, `clean`) e analisi dell'albero dipendenze con `mvn dependency:tree`.
+* Diagnosi rapida di errori di compilazione e dipendenze tramite analisi dei log e filtri CLI (`grep`, `tee`).
